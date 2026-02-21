@@ -1,0 +1,16 @@
+{
+  "name": "gsoc",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@google/genai": "^1.42.0",
+    "node-record-lpcm16": "^1.0.1"
+  }
+}
