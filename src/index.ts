@@ -1,6 +1,5 @@
 import { spawn } from "bun";
 import { GoogleGenAI, createPartFromBase64, Modality } from "@google/genai";
-import { readFileSync, writeFileSync } from "fs";
 import { Memory } from "./memory";
 
 const GEMINI_API_KEY = process.env.GOOGLE_API_KEY!;
@@ -15,7 +14,7 @@ console.log(`📚 Memory: ${memory.length} messages loaded.\n`);
 
 // ── Main conversation loop ──────────────────────────────────────────
 while (true) {
-  // ── Step 1: Record audio from microphone ────────────────────────
+  // ── Step 1: Record audio from microphone (piped to memory) ──────
   console.log(`🎙️  Recording ${RECORD_SECONDS} seconds from mic...`);
 
   const recordProc = spawn({
@@ -26,20 +25,30 @@ while (true) {
       "-t", String(RECORD_SECONDS),
       "-ac", "1",
       "-ar", "16000",
-      "-y",
-      "input.wav",
+      "-f", "wav",
+      "pipe:1",
     ],
-    stdout: "ignore",
+    stdout: "pipe",
     stderr: "ignore",
   });
 
+  // Read wav bytes from ffmpeg stdout into memory (no file on disk)
+  const wavChunks: Buffer[] = [];
+  const reader = recordProc.stdout.getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    wavChunks.push(Buffer.from(value));
+  }
   await recordProc.exited;
+
+  const wavBuffer = Buffer.concat(wavChunks);
   console.log("✅ Recording complete.\n");
 
   // ── Step 2: Transcribe audio ──────────────────────────────────────
   console.log("📝 Transcribing...");
 
-  const audioBase64 = readFileSync("input.wav").toString("base64");
+  const audioBase64 = wavBuffer.toString("base64");
 
   const transcription = await ai.models.generateContent({
     model: "gemini-2.5-flash",
@@ -123,10 +132,10 @@ while (true) {
     continue;
   }
 
-  writeFileSync("output.pcm", Buffer.from(audioData, "base64"));
+  const pcmBuffer = Buffer.from(audioData, "base64");
   console.log("✅ Speech generated.\n");
 
-  // ── Step 5: Play the audio ──────────────────────────────────────
+  // ── Step 5: Play the audio (piped via stdin, no file on disk) ───
   console.log("🔈 Playing response...");
 
   const playProc = spawn({
@@ -136,12 +145,17 @@ while (true) {
       "-nodisp",
       "-f", "s16le",
       "-ar", "24000",
-      "-ch_layout", "mono",
-      "output.pcm",
+      "-ac", "1",
+      "-i", "pipe:0",
     ],
+    stdin: "pipe",
     stdout: "ignore",
-    stderr: "ignore",
+    stderr: "inherit",
   });
+
+  // Write PCM data to ffplay's stdin
+  playProc.stdin.write(pcmBuffer);
+  playProc.stdin.end();
 
   await playProc.exited;
   console.log("✅ Done!\n");
