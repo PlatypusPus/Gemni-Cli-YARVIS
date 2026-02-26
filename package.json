@@ -10,7 +10,6 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@google/genai": "^1.42.0",
-    "node-record-lpcm16": "^1.0.1"
+    "@google/genai": "^1.42.0"
   }
 }
