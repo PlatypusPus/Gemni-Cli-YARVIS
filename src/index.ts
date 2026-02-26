@@ -14,7 +14,7 @@ const CONFIG = {
     text: "gemini-2.5-flash",
     tts: "gemini-2.5-flash-preview-tts",
   },
-  exitPhrases: ["goodbye", "stop", "exit", "quit"],
+  exitPhrases: ["goodbye", "good bye", "stop", "exit", "quit"],
 } as const;
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
@@ -104,7 +104,7 @@ async function transcribeAudio(wavBuffer: Buffer): Promise<string | null> {
 
 /** Generates a conversational reply using Gemini with memory context. */
 async function generateReply(): Promise<string> {
-  console.log("🧠 Thinking...");
+  console.log("Thinking...");
 
   // memory.toContents() already includes the latest user message as the last entry,
   // so we use the full history directly without appending again.
